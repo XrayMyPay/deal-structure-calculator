@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deal Structure Calculator - Small Business Acquisitions</title>
+    <meta name="description" content="Calculate and compare deal structure payouts for small business acquisitions. Analyze All-Cash, Earn-Out, Seller Financing, SBA 7(a) loans and custom structures with real-time calculations and PDF export.">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- html2canvas -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-50: #eff6ff;
+            --primary-100: #dbeafe;
+            --primary-200: #bfdbfe;
+            --primary-300: #93c5fd;
+            --primary-600: #2563eb;
+            --primary-700: #1d4ed8;
+        }
+        
+        .primary-bg { background-color: var(--primary-600); }
+        .primary-text { color: var(--primary-600); }
+        .primary-border { border-color: var(--primary-200); }
+        .primary-hover:hover { background-color: var(--primary-700); }
+        
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden { display: none; }
+        .block { display: block; }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
+            min-width: 300px;
+        }
+        
+        .toast.success { border-left: 4px solid #10b981; }
+        .toast.error { border-left: 4px solid #ef4444; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 primary-bg rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-sm">DC</span>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-900">Deal Structure Calculator</h1>
+                        <p class="text-sm text-slate-500 hidden sm:block">Small Business Acquisitions</p>
+                    </div>
+                </div>
+                <button 
+                    id="exportBtn"
+                    class="inline-flex items-center px-4 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50"
+                    disabled
+                >
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Export PDF
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Deal Type Selector -->
+        <div class="mb-8">
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200">
+                <div class="p-6 border-b border-slate-200">
+                    <h2 class="text-lg font-semibold text-slate-900">Select Deal Structure Type</h2>
+                    <p class="text-sm text-slate-600">Choose the acquisition structure to analyze and compare financial outcomes.</p>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" id="dealTypeSelector">
+                        <button class="deal-type-btn p-4 border-2 rounded-lg text-center transition-colors duration-200 border-slate-200 bg-white hover:border-blue-300" data-type="all-cash">
+                            <div class="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center bg-slate-400">
+                                <span class="text-white text-sm font-semibold">💰</span>
+                            </div>
+                            <h3 class="font-medium text-slate-900 text-sm">All-Cash Offer</h3>
+                            <p class="text-xs text-slate-500 mt-1">Immediate full payment</p>
+                        </button>
+                        
+                        <button class="deal-type-btn p-4 border-2 rounded-lg text-center transition-colors duration-200 border-slate-200 bg-white hover:border-blue-300" data-type="earn-out">
+                            <div class="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center bg-slate-400">
+                                <span class="text-white text-sm font-semibold">📈</span>
+                            </div>
+                            <h3 class="font-medium text-slate-900 text-sm">Earn-Out Structure</h3>
+                            <p class="text-xs text-slate-500 mt-1">Performance-based payments</p>
+                        </button>
+                        
+                        <button class="deal-type-btn p-4 border-2 rounded-lg text-center transition-colors duration-200 border-slate-200 bg-white hover:border-blue-300" data-type="seller-financing">
+                            <div class="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center bg-slate-400">
+                                <span class="text-white text-sm font-semibold">🤝</span>
+                            </div>
+                            <h3 class="font-medium text-slate-900 text-sm">Seller Financing</h3>
+                            <p class="text-xs text-slate-500 mt-1">Owner-financed terms</p>
+                        </button>
+                        
+                        <button class="deal-type-btn p-4 border-2 rounded-lg text-center transition-colors duration-200 border-slate-200 bg-white hover:border-blue-300" data-type="sba-loan">
+                            <div class="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center bg-slate-400">
+                                <span class="text-white text-sm font-semibold">🏛️</span>
+                            </div>
+                            <h3 class="font-medium text-slate-900 text-sm">SBA 7(a) Loan</h3>
+                            <p class="text-xs text-slate-500 mt-1">10% down + financing</p>
+                        </button>
+                        
+                        <button class="deal-type-btn p-4 border-2 rounded-lg text-center transition-colors duration-200 border-slate-200 bg-white hover:border-blue-300" data-type="custom">
+                            <div class="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center bg-slate-400">
+                                <span class="text-white text-sm font-semibold">⚙️</span>
+                            </div>
+                            <h3 class="font-medium text-slate-900 text-sm">Custom Structure</h3>
+                            <p class="text-xs text-slate-500 mt-1">Fully customizable</p>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Input Panel -->
+            <div class="space-y-6">
+                <div class="bg-white rounded-lg shadow-sm border border-slate-200">
+                    <div class="p-6 border-b border-slate-200">
+                        <h2 class="text-lg font-semibold text-slate-900">Deal Parameters</h2>
+                        <p class="text-sm text-slate-600" id="dealDescription">Configure the financial terms for your all-cash acquisition structure.</p>
+                    </div>
+                    <div class="p-6 space-y-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-700">Purchase Price ($) <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">$</span>
+                                    <input 
+                                        id="purchasePrice" 
+                                        type="number" 
+                                        placeholder="500,000"
+                                        value="500000"
+                                        class="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                    />
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-700">Term Length (Years) <span class="text-red-500">*</span></label>
+                                <input 
+                                    id="termLength" 
+                                    type="number" 
+                                    placeholder="5"
+                                    value="5"
+                                    min="1" max="30"
+                                    class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-700">Interest Rate (%)</label>
+                                <div class="relative">
+                                    <input 
+                                        id="interestRate" 
+                                        type="number" 
+                                        placeholder="5.5"
+                                        value="5.5"
+                                        step="0.1" min="0" max="50"
+                                        class="w-full pr-8 pl-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                    />
+                                    <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500">%</span>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-700">Tax Rate (%) <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <input 
+                                        id="taxRate" 
+                                        type="number" 
+                                        placeholder="25.0"
+                                        value="25.0"
+                                        step="0.1" min="0" max="60"
+                                        class="w-full pr-8 pl-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                    />
+                                    <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500">%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-slate-700">Equity Retained (%)</label>
+                            <div class="relative">
+                                <input 
+                                    id="equityRetained" 
+                                    type="number" 
+                                    placeholder="0.0"
+                                    value="0.0"
+                                    step="0.1" min="0" max="100"
+                                    class="w-full pr-8 pl-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                />
+                                <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500">%</span>
+                            </div>
+                        </div>
+
+                        <!-- SBA Loan Info -->
+                        <div id="sbaInfo" class="p-4 bg-blue-50 border border-blue-200 rounded-lg hidden">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                                    <span class="text-white text-xs">ℹ</span>
+                                </div>
+                                <p class="text-sm font-medium text-blue-900">SBA 7(a) Loan Requirements</p>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                <div class="bg-white p-3 rounded border">
+                                    <p class="font-medium text-slate-700">Down Payment</p>
+                                    <p class="text-slate-900 font-mono" id="sbaDownPayment">$50,000 (10%)</p>
+                                </div>
+                                <div class="bg-white p-3 rounded border">
+                                    <p class="font-medium text-slate-700">Financed Amount</p>
+                                    <p class="text-slate-900 font-mono" id="sbaFinancedAmount">$450,000 (90%)</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Custom Structure Fields -->
+                        <div id="customFields" class="p-4 bg-amber-50 border border-amber-200 rounded-lg hidden">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="w-5 h-5 bg-amber-600 rounded-full flex items-center justify-center">
+                                    <span class="text-white text-xs">⚙</span>
+                                </div>
+                                <p class="text-sm font-medium text-amber-900">Custom Structure Parameters</p>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium text-slate-700">Down Payment ($)</label>
+                                    <input 
+                                        id="downPayment" 
+                                        type="number" 
+                                        placeholder="100,000"
+                                        class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                    />
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium text-slate-700">Balloon Payment ($)</label>
+                                    <input 
+                                        id="balloonPayment" 
+                                        type="number" 
+                                        placeholder="0"
+                                        class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-200">
+                            <button 
+                                id="calculateBtn"
+                                class="w-full px-4 py-3 primary-bg text-white rounded-md font-medium primary-hover transition-colors"
+                            >
+                                Calculate & Compare Results
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="space-y-6">
+                <div id="resultsSection" class="hidden">
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-white rounded-lg shadow-sm border border-slate-200">
+                            <div class="p-4">
+                                <div class="text-sm font-medium text-slate-600 mb-1">Total Investment</div>
+                                <div class="text-2xl font-bold text-slate-900 font-mono" id="totalInvestment">$0</div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-sm border border-slate-200">
+                            <div class="p-4">
+                                <div class="text-sm font-medium text-green-600 mb-1">Net Proceeds</div>
+                                <div class="text-2xl font-bold text-green-700 font-mono" id="netProceeds">$0</div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-sm border border-slate-200">
+                            <div class="p-4">
+                                <div class="text-sm font-medium text-blue-600 mb-1">ROI</div>
+                                <div class="text-2xl font-bold text-blue-700 font-mono" id="roi">0%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart -->
+                    <div class="bg-white rounded-lg shadow-sm border border-slate-200">
+                        <div class="p-6 border-b border-slate-200">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold text-slate-900">Financial Summary</h3>
+                                <div class="flex items-center space-x-2">
+                                    <button id="yearlyViewBtn" class="px-3 py-1 text-sm font-medium rounded-md primary-bg text-white">Yearly</button>
+                                    <button id="cumulativeViewBtn" class="px-3 py-1 text-sm font-medium rounded-md border border-slate-300 text-slate-700 bg-white hover:bg-slate-50">Cumulative</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="h-64 mb-6">
+                                <canvas id="cashFlowChart" class="w-full h-full"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cash Flow Table -->
+                    <div class="bg-white rounded-lg shadow-sm border border-slate-200">
+                        <div class="p-6 border-b border-slate-200">
+                            <h3 class="text-lg font-semibold text-slate-900">Year-by-Year Breakdown</h3>
+                        </div>
+                        <div class="p-6">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-slate-200" id="cashFlowTable">
+                                    <thead class="bg-slate-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Year</th>
+                                            <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Principal</th>
+                                            <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Interest</th>
+                                            <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Tax Impact</th>
+                                            <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Net Cash Flow</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-slate-200" id="cashFlowTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Placeholder when no results -->
+                <div id="noResultsPlaceholder" class="bg-white rounded-lg shadow-sm border border-slate-200">
+                    <div class="p-6">
+                        <div class="text-center py-8">
+                            <p class="text-slate-600">No results available. Please calculate deal structures.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison Section -->
+        <div id="comparisonSection" class="mt-8 hidden">
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200">
+                <div class="p-6 border-b border-slate-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-slate-900">Deal Structure Comparison</h3>
+                        <div class="flex items-center space-x-2">
+                            <button id="comparisonYearlyBtn" class="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Yearly</button>
+                            <button id="comparisonCumulativeBtn" class="px-3 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200">Cumulative</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="h-80 mb-6">
+                        <canvas id="comparisonChart" class="w-full h-full"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200 mt-6">
+                <div class="p-6 border-b border-slate-200">
+                    <h3 class="text-lg font-semibold text-slate-900">Deal Structure Comparison</h3>
+                    <p class="text-sm text-slate-600">Compare outcomes across different acquisition structures.</p>
+                </div>
+                <div class="p-6">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200">
+                            <thead class="bg-slate-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Deal Type</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Total Investment</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Net Proceeds</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">ROI</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">IRR</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-slate-200" id="comparisonTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="modal-overlay hidden">
+        <div class="bg-white rounded-lg shadow-lg p-6 max-w-sm mx-4">
+            <div class="flex items-center space-x-4">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div>
+                    <h3 class="font-semibold text-slate-900">Calculating...</h3>
+                    <p class="text-sm text-slate-600">Processing deal structures</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <script>
+        // Global state
+        let selectedDealType = 'all-cash';
+        let currentComparisons = [];
+        let currentChart = null;
+        let comparisonChart = null;
+        let currentViewType = 'yearly';
+        let comparisonViewType = 'yearly';
+
+        // Deal type configurations
+        const dealTypeLabels = {
+            'all-cash': 'All-Cash Offer',
+            'earn-out': 'Earn-Out Structure',
+            'seller-financing': 'Seller Financing',
+            'sba-loan': 'SBA 7(a) Loan',
+            'custom': 'Custom Structure'
+        };
+
+        const dealTypeColors = {
+            'all-cash': '#3B82F6',
+            'earn-out': '#10B981',
+            'seller-financing': '#F59E0B',
+            'sba-loan': '#8B5CF6',
+            'custom': '#EF4444'
+        };
+
+        const dealTypeDescriptions = {
+            'all-cash': 'Configure the financial terms for your all-cash acquisition structure.',
+            'earn-out': 'Set up performance-based payments with earn-out milestones.',
+            'seller-financing': 'Structure owner-financed terms with custom payment schedules.',
+            'sba-loan': 'Configure SBA 7(a) loan terms with enforced 10% down payment.',
+            'custom': 'Create a fully customizable deal structure with flexible terms.'
+        };
+
+        // Financial calculation functions
+        function calculateMonthlyPayment(principal, annualRate, years) {
+            if (annualRate === 0) return principal / (years * 12);
+            
+            const monthlyRate = annualRate / 100 / 12;
+            const numPayments = years * 12;
+            
+            return principal * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
+                   (Math.pow(1 + monthlyRate, numPayments) - 1);
+        }
+
+        function calculateNPV(cashFlows, discountRate) {
+            return cashFlows.reduce((npv, cashFlow, year) => {
+                return npv + cashFlow / Math.pow(1 + discountRate / 100, year + 1);
+            }, 0);
+        }
+
+        function calculateIRR(cashFlows) {
+            let rate = 0.1; // Start with 10%
+            let tolerance = 0.0001;
+            let maxIterations = 100;
+            
+            for (let i = 0; i < maxIterations; i++) {
+                let npv = 0;
+                let derivative = 0;
+                
+                for (let j = 0; j < cashFlows.length; j++) {
+                    const factor = Math.pow(1 + rate, j + 1);
+                    npv += cashFlows[j] / factor;
+                    derivative -= (j + 1) * cashFlows[j] / (factor * (1 + rate));
+                }
+                
+                if (Math.abs(npv) < tolerance) break;
+                
+                rate = rate - npv / derivative;
+            }
+            
+            return rate * 100;
+        }
+
+        function calculateAllCash(inputs) {
+            const { purchasePrice, taxRate, termLength } = inputs;
+            
+            const taxImpact = purchasePrice * (taxRate / 100);
+            const netProceeds = purchasePrice - taxImpact;
+            
+            const cashFlow = [{
+                year: 1,
+                principal: purchasePrice,
+                interest: 0,
+                equityReturns: 0,
+                preTaxTotal: purchasePrice,
+                taxImpact: -taxImpact,
+                netCashFlow: netProceeds,
+                cumulative: netProceeds
+            }];
+            
+            // Add remaining years with zero cash flow
+            for (let year = 2; year <= termLength; year++) {
+                cashFlow.push({
+                    year,
+                    principal: 0,
+                    interest: 0,
+                    equityReturns: 0,
+                    preTaxTotal: 0,
+                    taxImpact: 0,
+                    netCashFlow: 0,
+                    cumulative: netProceeds
+                });
+            }
+            
+            const cashFlowValues = [purchasePrice, ...Array(termLength - 1).fill(0)];
+            const npv = calculateNPV(cashFlowValues, 8);
+            const roi = ((netProceeds - purchasePrice) / purchasePrice) * 100;
+            
+            return {
+                totalInvestment: purchasePrice,
+                netProceeds,
+                roi,
+                irr: 0,
+                cashFlow,
+                npv
+            };
+        }
+
+        function calculateEarnOut(inputs) {
+            const { purchasePrice, termLength, taxRate } = inputs;
+            
+            const upfrontPayment = purchasePrice * 0.6;
+            const earnOutAmount = purchasePrice * 0.4;
+            const annualEarnOut = earnOutAmount / (termLength - 1);
+            
+            const cashFlow = [];
+            let cumulative = 0;
+            
+            // Year 1: Upfront payment
+            const year1Tax = upfrontPayment * (taxRate / 100);
+            const year1Net = upfrontPayment - year1Tax;
+            cumulative += year1Net;
+            
+            cashFlow.push({
+                year: 1,
+                principal: upfrontPayment,
+                interest: 0,
+                equityReturns: 0,
+                preTaxTotal: upfrontPayment,
+                taxImpact: -year1Tax,
+                netCashFlow: year1Net,
+                cumulative
+            });
+            
+            // Subsequent years: Earn-out payments
+            for (let year = 2; year <= termLength; year++) {
+                const earnOutTax = annualEarnOut * (taxRate / 100);
+                const earnOutNet = annualEarnOut - earnOutTax;
+                cumulative += earnOutNet;
+                
+                cashFlow.push({
+                    year,
+                    principal: annualEarnOut,
+                    interest: 0,
+                    equityReturns: 0,
+                    preTaxTotal: annualEarnOut,
+                    taxImpact: -earnOutTax,
+                    netCashFlow: earnOutNet,
+                    cumulative
+                });
+            }
+            
+            const cashFlowValues = cashFlow.map(row => row.netCashFlow);
+            const npv = calculateNPV(cashFlowValues, 8);
+            const irr = calculateIRR([-upfrontPayment, ...cashFlowValues.slice(1)]);
+            
+            return {
+                totalInvestment: upfrontPayment,
+                netProceeds: cumulative,
+                roi: ((cumulative - upfrontPayment) / upfrontPayment) * 100,
+                irr,
+                cashFlow,
+                npv
+            };
+        }
+
+        function calculateSellerFinancing(inputs) {
+            const { purchasePrice, termLength, interestRate, taxRate } = inputs;
+            
+            const downPayment = purchasePrice * 0.2;
+            const financedAmount = purchasePrice - downPayment;
+            
+            const monthlyPayment = calculateMonthlyPayment(financedAmount, interestRate, termLength);
+            const annualPayment = monthlyPayment * 12;
+            
+            const cashFlow = [];
+            let remainingBalance = financedAmount;
+            let cumulative = 0;
+            
+            const downTax = downPayment * (taxRate / 100);
+            const downNet = downPayment - downTax;
+            cumulative += downNet;
+            
+            for (let year = 1; year <= termLength; year++) {
+                const interestPayment = remainingBalance * (interestRate / 100);
+                const principalPayment = Math.min(annualPayment - interestPayment, remainingBalance);
+                const totalPayment = principalPayment + interestPayment;
+                
+                const paymentTax = totalPayment * (taxRate / 100);
+                const netPayment = totalPayment - paymentTax;
+                
+                if (year === 1) {
+                    const totalYear1 = downNet + netPayment;
+                    cumulative = totalYear1;
+                    
+                    cashFlow.push({
+                        year,
+                        principal: downPayment + principalPayment,
+                        interest: interestPayment,
+                        equityReturns: 0,
+                        preTaxTotal: downPayment + totalPayment,
+                        taxImpact: -(downTax + paymentTax),
+                        netCashFlow: totalYear1,
+                        cumulative
+                    });
+                } else {
+                    cumulative += netPayment;
+                    
+                    cashFlow.push({
+                        year,
+                        principal: principalPayment,
+                        interest: interestPayment,
+                        equityReturns: 0,
+                        preTaxTotal: totalPayment,
+                        taxImpact: -paymentTax,
+                        netCashFlow: netPayment,
+                        cumulative
+                    });
+                }
+                
+                remainingBalance -= principalPayment;
+                if (remainingBalance <= 0) break;
+            }
+            
+            const cashFlowValues = cashFlow.map(row => row.netCashFlow);
+            const npv = calculateNPV(cashFlowValues, 8);
+            const irr = calculateIRR([-downPayment, ...cashFlowValues.slice(0, -1), cashFlowValues[cashFlowValues.length - 1] - downPayment]);
+            
+            return {
+                totalInvestment: downPayment,
+                netProceeds: cumulative,
+                roi: ((cumulative - downPayment) / downPayment) * 100,
+                irr,
+                cashFlow,
+                npv
+            };
+        }
+
+        function calculateSBALoan(inputs) {
+            const { purchasePrice, termLength, interestRate, taxRate } = inputs;
+            
+            const downPayment = purchasePrice * 0.1;
+            const loanAmount = purchasePrice * 0.9;
+            
+            const monthlyPayment = calculateMonthlyPayment(loanAmount, interestRate, termLength);
+            const annualPayment = monthlyPayment * 12;
+            
+            const cashFlow = [];
+            let remainingBalance = loanAmount;
+            let cumulative = 0;
+            
+            const downTax = downPayment * (taxRate / 100);
+            const downNet = downPayment - downTax;
+            
+            for (let year = 1; year <= termLength; year++) {
+                const interestPayment = remainingBalance * (interestRate / 100);
+                const principalPayment = Math.min(annualPayment - interestPayment, remainingBalance);
+                
+                const equityGrowth = purchasePrice * 0.1;
+                const equityTax = equityGrowth * (taxRate / 100);
+                const netEquityGrowth = equityGrowth - equityTax;
+                
+                const loanPaymentAfterTax = (principalPayment + interestPayment) * (1 - taxRate / 100);
+                let netYearlyReturn = netEquityGrowth - loanPaymentAfterTax;
+                
+                if (year === 1) {
+                    netYearlyReturn -= downPayment;
+                    cumulative = netYearlyReturn;
+                    
+                    cashFlow.push({
+                        year,
+                        principal: downPayment,
+                        interest: interestPayment,
+                        equityReturns: netEquityGrowth,
+                        preTaxTotal: downPayment + equityGrowth,
+                        taxImpact: -(downTax + equityTax),
+                        netCashFlow: netYearlyReturn,
+                        cumulative
+                    });
+                } else {
+                    cumulative += netYearlyReturn;
+                    
+                    cashFlow.push({
+                        year,
+                        principal: principalPayment,
+                        interest: interestPayment,
+                        equityReturns: netEquityGrowth,
+                        preTaxTotal: principalPayment + interestPayment + equityGrowth,
+                        taxImpact: -equityTax,
+                        netCashFlow: netYearlyReturn,
+                        cumulative
+                    });
+                }
+                
+                remainingBalance -= principalPayment;
+                if (remainingBalance <= 0) break;
+            }
+            
+            const cashFlowValues = cashFlow.map(row => row.netCashFlow);
+            const npv = calculateNPV(cashFlowValues, 8);
+            const irr = calculateIRR(cashFlowValues);
+            
+            return {
+                totalInvestment: downPayment,
+                netProceeds: cumulative,
+                roi: ((cumulative - downPayment) / downPayment) * 100,
+                irr,
+                cashFlow,
+                npv
+            };
+        }
+
+        function calculateCustom(inputs) {
+            const { purchasePrice, termLength, interestRate, taxRate, downPayment = 0, balloonPayment = 0 } = inputs;
+            
+            const initialPayment = downPayment || purchasePrice * 0.25;
+            const financedAmount = purchasePrice - initialPayment;
+            const balloonAmount = balloonPayment || 0;
+            const regularFinancedAmount = financedAmount - balloonAmount;
+            
+            let monthlyPayment = 0;
+            if (regularFinancedAmount > 0) {
+                monthlyPayment = calculateMonthlyPayment(regularFinancedAmount, interestRate, termLength);
+            }
+            const annualPayment = monthlyPayment * 12;
+            
+            const cashFlow = [];
+            let remainingBalance = regularFinancedAmount;
+            let cumulative = 0;
+            
+            const initialTax = initialPayment * (taxRate / 100);
+            const initialNet = initialPayment - initialTax;
+            cumulative += initialNet;
+            
+            for (let year = 1; year <= termLength; year++) {
+                const interestPayment = remainingBalance * (interestRate / 100);
+                const principalPayment = Math.min(annualPayment - interestPayment, remainingBalance);
+                let totalPayment = principalPayment + interestPayment;
+                
+                if (year === termLength && balloonAmount > 0) {
+                    totalPayment += balloonAmount;
+                }
+                
+                const paymentTax = totalPayment * (taxRate / 100);
+                const netPayment = totalPayment - paymentTax;
+                
+                if (year === 1) {
+                    const totalYear1 = initialNet + netPayment;
+                    cumulative = totalYear1;
+                    
+                    cashFlow.push({
+                        year,
+                        principal: initialPayment + principalPayment + (year === termLength ? balloonAmount : 0),
+                        interest: interestPayment,
+                        equityReturns: 0,
+                        preTaxTotal: initialPayment + totalPayment,
+                        taxImpact: -(initialTax + paymentTax),
+                        netCashFlow: totalYear1,
+                        cumulative
+                    });
+                } else {
+                    cumulative += netPayment;
+                    
+                    cashFlow.push({
+                        year,
+                        principal: principalPayment + (year === termLength ? balloonAmount : 0),
+                        interest: interestPayment,
+                        equityReturns: 0,
+                        preTaxTotal: totalPayment,
+                        taxImpact: -paymentTax,
+                        netCashFlow: netPayment,
+                        cumulative
+                    });
+                }
+                
+                remainingBalance -= principalPayment;
+                if (remainingBalance <= 0) break;
+            }
+            
+            const cashFlowValues = cashFlow.map(row => row.netCashFlow);
+            const npv = calculateNPV(cashFlowValues, 8);
+            const irr = calculateIRR([-initialPayment, ...cashFlowValues.slice(1)]);
+            
+            return {
+                totalInvestment: initialPayment,
+                netProceeds: cumulative,
+                roi: ((cumulative - initialPayment) / initialPayment) * 100,
+                irr,
+                cashFlow,
+                npv
+            };
+        }
+
+        function calculateDealStructure(dealType, inputs) {
+            switch (dealType) {
+                case 'all-cash':
+                    return calculateAllCash(inputs);
+                case 'earn-out':
+                    return calculateEarnOut(inputs);
+                case 'seller-financing':
+                    return calculateSellerFinancing(inputs);
+                case 'sba-loan':
+                    return calculateSBALoan(inputs);
+                case 'custom':
+                    return calculateCustom(inputs);
+                default:
+                    return calculateAllCash(inputs);
+            }
+        }
+
+        // Utility functions
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(Math.abs(value));
+        }
+
+        function formatPercentage(value) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'percent',
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1
+            }).format(value / 100);
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h4 class="font-semibold text-slate-900">${type === 'success' ? 'Success' : 'Error'}</h4>
+                        <p class="text-sm text-slate-600">${message}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-slate-400 hover:text-slate-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('toastContainer').appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 5000);
+        }
+
+        function getInputs() {
+            return {
+                purchasePrice: parseFloat(document.getElementById('purchasePrice').value) || 0,
+                termLength: parseFloat(document.getElementById('termLength').value) || 0,
+                interestRate: parseFloat(document.getElementById('interestRate').value) || 0,
+                taxRate: parseFloat(document.getElementById('taxRate').value) || 0,
+                equityRetained: parseFloat(document.getElementById('equityRetained').value) || 0,
+                downPayment: parseFloat(document.getElementById('downPayment').value) || 0,
+                balloonPayment: parseFloat(document.getElementById('balloonPayment').value) || 0
+            };
+        }
+
+        function updateSBAInfo() {
+            const purchasePrice = parseFloat(document.getElementById('purchasePrice').value) || 0;
+            document.getElementById('sbaDownPayment').textContent = 
+                `${formatCurrency(purchasePrice * 0.1)} (10%)`;
+            document.getElementById('sbaFinancedAmount').textContent = 
+                `${formatCurrency(purchasePrice * 0.9)} (90%)`;
+        }
+
+        function updateChart(comparison, viewType) {
+            const ctx = document.getElementById('cashFlowChart').getContext('2d');
+            
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            const labels = comparison.results.cashFlow.map(row => `Year ${row.year}`);
+            const data = comparison.results.cashFlow.map(row => 
+                viewType === 'yearly' ? row.netCashFlow : row.cumulative
+            );
+            
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: comparison.label,
+                        data,
+                        backgroundColor: comparison.color + '20',
+                        borderColor: comparison.color,
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: false,
+                        pointBackgroundColor: comparison.color,
+                        pointBorderColor: comparison.color,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    return `${context.dataset.label}: ${formatCurrency(value)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#6B7280'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(107, 114, 128, 0.1)'
+                            },
+                            ticks: {
+                                color: '#6B7280',
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateComparisonChart(comparisons, viewType) {
+            const ctx = document.getElementById('comparisonChart').getContext('2d');
+            
+            if (comparisonChart) {
+                comparisonChart.destroy();
+            }
+            
+            if (comparisons.length === 0) return;
+            
+            const maxTermLength = Math.max(...comparisons.map(c => c.results.cashFlow.length));
+            const labels = Array.from({ length: maxTermLength }, (_, i) => `Year ${i + 1}`);
+            
+            const datasets = comparisons.map(comparison => {
+                const data = Array(maxTermLength).fill(0);
+                
+                comparison.results.cashFlow.forEach((row, index) => {
+                    if (index < maxTermLength) {
+                        data[index] = viewType === 'yearly' ? row.netCashFlow : row.cumulative;
+                    }
+                });
+                
+                return {
+                    label: comparison.label,
+                    data,
+                    backgroundColor: comparison.color + '20',
+                    borderColor: comparison.color,
+                    borderWidth: 2,
+                    tension: 0.1,
+                    fill: false,
+                    pointBackgroundColor: comparison.color,
+                    pointBorderColor: comparison.color,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                };
+            });
+            
+            comparisonChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    return `${context.dataset.label}: ${formatCurrency(value)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#6B7280'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(107, 114, 128, 0.1)'
+                            },
+                            ticks: {
+                                color: '#6B7280',
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateResultsDisplay(comparison) {
+            document.getElementById('totalInvestment').textContent = formatCurrency(comparison.results.totalInvestment);
+            document.getElementById('netProceeds').textContent = formatCurrency(comparison.results.netProceeds);
+            document.getElementById('roi').textContent = formatPercentage(comparison.results.roi);
+            
+            // Update cash flow table
+            const tbody = document.getElementById('cashFlowTableBody');
+            tbody.innerHTML = '';
+            
+            comparison.results.cashFlow.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50';
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-sm text-slate-900 font-medium">Year ${row.year}</td>
+                    <td class="px-4 py-3 text-sm text-slate-900 text-right font-mono">${formatCurrency(row.principal)}</td>
+                    <td class="px-4 py-3 text-sm text-slate-900 text-right font-mono">${formatCurrency(row.interest)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-mono ${row.taxImpact < 0 ? 'text-red-600' : 'text-slate-900'}">
+                        ${row.taxImpact < 0 ? '(' + formatCurrency(row.taxImpact) + ')' : formatCurrency(row.taxImpact)}
+                    </td>
+                    <td class="px-4 py-3 text-sm text-slate-900 text-right font-mono font-semibold">${formatCurrency(row.netCashFlow)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            updateChart(comparison, currentViewType);
+        }
+
+        function updateComparisonDisplay(comparisons) {
+            const tbody = document.getElementById('comparisonTableBody');
+            tbody.innerHTML = '';
+            
+            comparisons.forEach(comparison => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50';
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-sm font-medium text-slate-900">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 rounded-full" style="background-color: ${comparison.color}"></div>
+                            <span>${comparison.label}</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-slate-900 text-right font-mono">${formatCurrency(comparison.results.totalInvestment)}</td>
+                    <td class="px-4 py-3 text-sm text-slate-900 text-right font-mono">${formatCurrency(comparison.results.netProceeds)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-mono font-semibold ${comparison.results.roi >= 0 ? 'text-green-600' : 'text-red-600'}">
+                        ${formatPercentage(comparison.results.roi)}
+                    </td>
+                    <td class="px-4 py-3 text-sm text-slate-900 text-right font-mono">${formatPercentage(comparison.results.irr)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            updateComparisonChart(comparisons, comparisonViewType);
+        }
+
+        // Event handlers
+        function handleDealTypeSelection(dealType) {
+            selectedDealType = dealType;
+            
+            // Update UI
+            document.querySelectorAll('.deal-type-btn').forEach(btn => {
+                const isSelected = btn.dataset.type === dealType;
+                btn.className = `deal-type-btn p-4 border-2 rounded-lg text-center transition-colors duration-200 ${
+                    isSelected 
+                        ? 'border-blue-200 bg-blue-50' 
+                        : 'border-slate-200 bg-white hover:border-blue-300'
+                }`;
+                
+                const icon = btn.querySelector('.w-8');
+                icon.className = `w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${
+                    isSelected ? 'bg-blue-600' : 'bg-slate-400'
+                }`;
+            });
+            
+            // Update description
+            document.getElementById('dealDescription').textContent = dealTypeDescriptions[dealType];
+            
+            // Show/hide relevant fields
+            document.getElementById('sbaInfo').classList.toggle('hidden', dealType !== 'sba-loan');
+            document.getElementById('customFields').classList.toggle('hidden', dealType !== 'custom');
+            
+            if (dealType === 'sba-loan') {
+                updateSBAInfo();
+            }
+        }
+
+        async function handleCalculate() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            loadingOverlay.classList.remove('hidden');
+            
+            try {
+                const inputs = getInputs();
+                
+                // Calculate all deal types for comparison
+                const dealTypes = ['all-cash', 'earn-out', 'seller-financing', 'sba-loan', 'custom'];
+                const newComparisons = [];
+                
+                for (const dealType of dealTypes) {
+                    try {
+                        const results = calculateDealStructure(dealType, inputs);
+                        newComparisons.push({
+                            dealType,
+                            label: dealTypeLabels[dealType],
+                            results,
+                            color: dealTypeColors[dealType]
+                        });
+                    } catch (error) {
+                        console.error(`Error calculating ${dealType}:`, error);
+                    }
+                }
+                
+                currentComparisons = newComparisons;
+                
+                // Update displays
+                const selectedComparison = currentComparisons.find(c => c.dealType === selectedDealType);
+                if (selectedComparison) {
+                    updateResultsDisplay(selectedComparison);
+                    document.getElementById('resultsSection').classList.remove('hidden');
+                    document.getElementById('noResultsPlaceholder').classList.add('hidden');
+                }
+                
+                if (currentComparisons.length > 0) {
+                    updateComparisonDisplay(currentComparisons);
+                    document.getElementById('comparisonSection').classList.remove('hidden');
+                    document.getElementById('exportBtn').disabled = false;
+                }
+                
+                showToast('All deal structures have been calculated successfully.');
+                
+            } catch (error) {
+                console.error('Calculation error:', error);
+                showToast('An error occurred while calculating deal structures. Please try again.', 'error');
+            } finally {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        async function handleExportPDF() {
+            if (currentComparisons.length === 0) return;
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const margin = 20;
+                let yPosition = margin;
+                
+                // Add header
+                pdf.setFontSize(20);
+                pdf.setTextColor(59, 130, 246);
+                pdf.text('Deal Structure Calculator', margin, yPosition);
+                yPosition += 10;
+                
+                pdf.setFontSize(12);
+                pdf.setTextColor(100, 100, 100);
+                pdf.text('Small Business Acquisition Analysis', margin, yPosition);
+                yPosition += 15;
+                
+                // Report title
+                pdf.setFontSize(16);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text('Business Acquisition Analysis Report', margin, yPosition);
+                yPosition += 15;
+                
+                // Add date
+                pdf.setFontSize(10);
+                pdf.setTextColor(100, 100, 100);
+                pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, margin, yPosition);
+                yPosition += 20;
+                
+                // Input assumptions
+                const inputs = getInputs();
+                pdf.setFontSize(14);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text('Input Assumptions', margin, yPosition);
+                yPosition += 10;
+                
+                const assumptions = [
+                    ['Purchase Price', `$${inputs.purchasePrice.toLocaleString()}`],
+                    ['Term Length', `${inputs.termLength} years`],
+                    ['Interest Rate', `${inputs.interestRate}%`],
+                    ['Tax Rate', `${inputs.taxRate}%`],
+                    ['Equity Retained', `${inputs.equityRetained}%`]
+                ];
+                
+                assumptions.forEach(([label, value]) => {
+                    pdf.setFontSize(10);
+                    pdf.setTextColor(0, 0, 0);
+                    pdf.text(label + ':', margin, yPosition);
+                    pdf.text(value, margin + 60, yPosition);
+                    yPosition += 6;
+                });
+                
+                yPosition += 15;
+                
+                // Deal comparison
+                pdf.setFontSize(14);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text('Deal Structure Comparison', margin, yPosition);
+                yPosition += 15;
+                
+                // Create comparison table
+                const tableData = [
+                    ['Deal Type', 'Investment', 'Net Proceeds', 'ROI', 'IRR']
+                ];
+                
+                currentComparisons.forEach(comparison => {
+                    tableData.push([
+                        comparison.label,
+                        `$${comparison.results.totalInvestment.toLocaleString()}`,
+                        `$${comparison.results.netProceeds.toLocaleString()}`,
+                        `${comparison.results.roi.toFixed(1)}%`,
+                        `${comparison.results.irr.toFixed(1)}%`
+                    ]);
+                });
+                
+                // Draw table
+                const cellHeight = 8;
+                const colWidths = [40, 30, 30, 20, 20];
+                let tableY = yPosition;
+                
+                tableData.forEach((row, rowIndex) => {
+                    let cellX = margin;
+                    
+                    row.forEach((cell, colIndex) => {
+                        // Draw cell border
+                        pdf.rect(cellX, tableY, colWidths[colIndex], cellHeight);
+                        
+                        // Set font style for header
+                        if (rowIndex === 0) {
+                            pdf.setFontSize(9);
+                            pdf.setFont(undefined, 'bold');
+                        } else {
+                            pdf.setFontSize(8);
+                            pdf.setFont(undefined, 'normal');
+                        }
+                        
+                        // Add text
+                        pdf.text(cell, cellX + 2, tableY + 5);
+                        cellX += colWidths[colIndex];
+                    });
+                    
+                    tableY += cellHeight;
+                });
+                
+                // Save the PDF
+                const fileName = `deal-structure-analysis-${new Date().toISOString().split('T')[0]}.pdf`;
+                pdf.save(fileName);
+                
+                showToast('Your deal analysis report has been downloaded.');
+                
+            } catch (error) {
+                console.error('PDF export error:', error);
+                showToast('Failed to generate PDF report. Please try again.', 'error');
+            }
+        }
+
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Deal type selection
+            document.querySelectorAll('.deal-type-btn').forEach(btn => {
+                btn.addEventListener('click', () => handleDealTypeSelection(btn.dataset.type));
+            });
+            
+            // Calculate button
+            document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
+            
+            // Export button
+            document.getElementById('exportBtn').addEventListener('click', handleExportPDF);
+            
+            // Chart view toggles
+            document.getElementById('yearlyViewBtn').addEventListener('click', () => {
+                currentViewType = 'yearly';
+                document.getElementById('yearlyViewBtn').className = 'px-3 py-1 text-sm font-medium rounded-md primary-bg text-white';
+                document.getElementById('cumulativeViewBtn').className = 'px-3 py-1 text-sm font-medium rounded-md border border-slate-300 text-slate-700 bg-white hover:bg-slate-50';
+                
+                const selectedComparison = currentComparisons.find(c => c.dealType === selectedDealType);
+                if (selectedComparison) {
+                    updateChart(selectedComparison, currentViewType);
+                }
+            });
+            
+            document.getElementById('cumulativeViewBtn').addEventListener('click', () => {
+                currentViewType = 'cumulative';
+                document.getElementById('cumulativeViewBtn').className = 'px-3 py-1 text-sm font-medium rounded-md primary-bg text-white';
+                document.getElementById('yearlyViewBtn').className = 'px-3 py-1 text-sm font-medium rounded-md border border-slate-300 text-slate-700 bg-white hover:bg-slate-50';
+                
+                const selectedComparison = currentComparisons.find(c => c.dealType === selectedDealType);
+                if (selectedComparison) {
+                    updateChart(selectedComparison, currentViewType);
+                }
+            });
+            
+            // Comparison chart view toggles
+            document.getElementById('comparisonYearlyBtn').addEventListener('click', () => {
+                comparisonViewType = 'yearly';
+                document.getElementById('comparisonYearlyBtn').className = 'px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700';
+                document.getElementById('comparisonCumulativeBtn').className = 'px-3 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200';
+                updateComparisonChart(currentComparisons, comparisonViewType);
+            });
+            
+            document.getElementById('comparisonCumulativeBtn').addEventListener('click', () => {
+                comparisonViewType = 'cumulative';
+                document.getElementById('comparisonCumulativeBtn').className = 'px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700';
+                document.getElementById('comparisonYearlyBtn').className = 'px-3 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200';
+                updateComparisonChart(currentComparisons, comparisonViewType);
+            });
+            
+            // Update SBA info when purchase price changes
+            document.getElementById('purchasePrice').addEventListener('input', () => {
+                if (selectedDealType === 'sba-loan') {
+                    updateSBAInfo();
+                }
+            });
+            
+            // Initialize with all-cash selected
+            handleDealTypeSelection('all-cash');
+        });
+    </script>
+</body>
+</html>
